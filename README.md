@@ -19,7 +19,7 @@ A comprehensive skill for managing Render cloud infrastructure through Claude Co
 Add this marketplace to your Claude Code configuration:
 
 ```bash
-claude plugin add https://raw.githubusercontent.com/YOUR_USERNAME/render-skills/main/.claude-plugin/marketplace.json
+claude plugin add https://raw.githubusercontent.com/tejchilli/render-skills/main/.claude-plugin/marketplace.json
 ```
 
 Then install the skill:
@@ -33,7 +33,7 @@ claude plugin install render
 Clone and symlink:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/render-skills.git
+git clone https://github.com/tejchilli/render-skills.git
 ln -s $(pwd)/render-skills ~/.config/claude-code/skills/render
 ```
 
