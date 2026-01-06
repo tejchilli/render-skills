@@ -1,0 +1,40 @@
+{
+  "name": "render-skills-marketplace",
+  "owner": {
+    "name": "Tej"
+  },
+  "metadata": {
+    "description": "Render cloud infrastructure management skills for Claude Code",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "render",
+      "source": ".",
+      "description": "Complete toolkit for managing Render cloud infrastructure via API - create and configure services (web, workers, cron jobs), manage deployments, configure environments, handle datastores (Postgres, Redis, KV), work with blueprints for infrastructure-as-code, monitor logs and metrics, and troubleshoot common issues. Use this when working with Render.com hosting platform.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tej"
+      },
+      "license": "Apache-2.0",
+      "keywords": [
+        "render",
+        "cloud",
+        "deployment",
+        "api",
+        "infrastructure",
+        "devops",
+        "hosting",
+        "postgres",
+        "redis",
+        "web-services"
+      ],
+      "category": "cloud",
+      "tags": [
+        "infrastructure-as-code",
+        "deployment",
+        "databases"
+      ]
+    }
+  ]
+}

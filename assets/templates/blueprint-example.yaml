@@ -1,0 +1,274 @@
+# Render Blueprint Example
+# This file demonstrates a comprehensive full-stack application with:
+# - Web service (API)
+# - Background worker
+# - Cron job
+# - Static site
+# - Postgres database
+# - Redis cache
+
+# Learn more: https://render.com/docs/infrastructure-as-code
+
+#############################################
+# Databases
+#############################################
+
+databases:
+  # Postgres database for application data
+  - name: main-database
+    databaseName: myapp
+    user: myapp_user
+    plan: standard  # Options: free, starter, standard, pro, pro_plus
+    region: oregon  # Options: oregon, frankfurt, ohio, singapore
+    # ipAllowList: []  # Uncomment to restrict external access
+    # highAvailability: true  # Requires pro_plus plan
+
+  # Redis for caching and job queues
+  - name: redis-cache
+    plan: starter  # Options: free, starter, standard, pro, pro_plus
+    maxmemoryPolicy: allkeys-lru  # Options: noeviction, allkeys-lru, allkeys-lfu, volatile-lru, volatile-ttl
+    region: oregon
+
+#############################################
+# Environment Variable Groups
+# (Reusable across services)
+#############################################
+
+envVarGroups:
+  - name: common-config
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: TZ
+        value: UTC
+
+#############################################
+# Services
+#############################################
+
+services:
+  # Web Service - Main API
+  - type: web
+    name: api-server
+    runtime: node  # Options: node, python, go, rust, ruby, elixir, docker, static
+    plan: standard  # Options: free, starter, standard, pro, pro_plus
+    region: oregon
+    branch: main
+    rootDirectory: ./  # Path relative to repo root
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health  # Endpoint that returns 200 OK
+    autoDeploy: yes  # Deploy automatically on git push
+    pullRequestPreviewsEnabled: yes  # Create preview environments for PRs
+
+    # Environment variables
+    envVars:
+      # Inherit from group
+      - fromGroup: common-config
+
+      # Database connection (auto-injected)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: main-database
+          property: connectionString  # Options: connectionString, host, port, database, user, password
+
+      # Redis connection
+      - key: REDIS_URL
+        fromDatabase:
+          name: redis-cache
+          property: connectionString
+
+      # Static values
+      - key: PORT
+        value: "10000"
+
+      # Secrets (managed in dashboard, not in blueprint)
+      - key: API_SECRET
+        sync: false  # This value stays in dashboard
+
+      - key: JWT_SECRET
+        sync: false
+
+  # Background Worker - Job Processing
+  - type: worker
+    name: job-worker
+    runtime: node
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: npm install
+    startCommand: npm run worker
+    autoDeploy: yes
+
+    envVars:
+      - fromGroup: common-config
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: main-database
+          property: connectionString
+
+      - key: REDIS_URL
+        fromDatabase:
+          name: redis-cache
+          property: connectionString
+
+      - key: WORKER_CONCURRENCY
+        value: "5"
+
+  # Cron Job - Scheduled Task
+  - type: cron
+    name: daily-cleanup
+    runtime: node
+    plan: starter
+    region: oregon
+    branch: main
+    schedule: "0 2 * * *"  # Daily at 2 AM UTC (cron syntax)
+    buildCommand: npm install
+    startCommand: npm run cleanup
+
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: main-database
+          property: connectionString
+
+      - key: CLEANUP_DAYS_OLD
+        value: "30"
+
+  # Static Site - Frontend
+  - type: web
+    name: frontend
+    runtime: static
+    plan: free
+    region: oregon
+    branch: main
+    rootDirectory: ./frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist  # Directory to serve
+    pullRequestPreviewsEnabled: yes
+
+    # Environment variables available during build
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: api-server
+          type: web
+          property: host  # Gets the hostname (e.g., api-server.onrender.com)
+
+      - key: VITE_APP_VERSION
+        value: "1.0.0"
+
+    # Custom HTTP headers
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+
+      - path: /static/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+
+    # Routes for SPA
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # Private Service - Internal API
+  # (Not exposed to internet, only accessible from other services)
+  - type: pserv
+    name: internal-service
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    rootDirectory: ./internal-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:10000
+
+    envVars:
+      - fromGroup: common-config
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: main-database
+          property: connectionString
+
+      - key: PORT
+        value: "10000"
+
+#############################################
+# Notes
+#############################################
+
+# Service Types:
+#   - web: Public HTTP service with custom domains
+#   - worker: Background processing, no public endpoint
+#   - cron: Scheduled tasks
+#   - pserv: Private service (internal only)
+#   - static: Static site hosting
+
+# Accessing Private Services:
+#   From other services: http://internal-service.render-internal.com:10000
+
+# Connection Strings:
+#   Internal (from services in same account): Uses .render-internal.com
+#   External (from outside): Uses .render.com
+#   Blueprint automatically uses internal connections
+
+# Secrets:
+#   Use sync: false for sensitive values
+#   Set these manually in Render dashboard after blueprint creation
+
+# Preview Environments:
+#   When enabled, creates temporary environment for each pull request
+#   Useful for testing changes before merging
+
+# Cron Schedule Syntax:
+#   ┌────────── minute (0 - 59)
+#   │ ┌────────── hour (0 - 23)
+#   │ │ ┌────────── day of month (1 - 31)
+#   │ │ │ ┌────────── month (1 - 12)
+#   │ │ │ │ ┌────────── day of week (0 - 6, Sunday = 0)
+#   │ │ │ │ │
+#   * * * * *
+#
+#   Examples:
+#   - "0 9 * * *"      Daily at 9 AM
+#   - "*/15 * * * *"   Every 15 minutes
+#   - "0 0 * * 0"      Weekly on Sunday at midnight
+#   - "0 2 1 * *"      Monthly on the 1st at 2 AM
+
+# Regions:
+#   - oregon (US West)
+#   - frankfurt (Europe)
+#   - ohio (US East)
+#   - singapore (Asia)
+#   Choose region closest to your users
+
+# Instance Plans:
+#   - free: Limited resources, sleeps after 15min inactivity
+#   - starter: 512MB RAM, 0.5 CPU
+#   - standard: 2GB RAM, 1 CPU (minimum for auto-scaling)
+#   - pro: 4GB RAM, 2 CPU
+#   - pro_plus: 8GB RAM, 4 CPU
+
+# Auto-Scaling:
+#   Configure via dashboard or API (not in blueprint)
+#   Requires Standard plan or higher
+
+# To use this blueprint:
+#   1. Copy to your repository as render.yaml
+#   2. Customize service names, commands, and configuration
+#   3. Set secrets in Render dashboard (variables with sync: false)
+#   4. Connect repository to Render
+#   5. Render creates all defined resources automatically
+
+# Learn more: https://render.com/docs/infrastructure-as-code
