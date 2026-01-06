@@ -113,6 +113,8 @@ All examples use curl with the `RENDER_API_KEY` environment variable. Replace wi
 
 ### Creating a Web Service
 
+**IMPORTANT**: The `serviceDetails` object is required for web services and must include the runtime and environment-specific build/start commands.
+
 ```bash
 curl -X POST https://api.render.com/v1/services \
   -H "Authorization: Bearer $RENDER_API_KEY" \
@@ -124,10 +126,13 @@ curl -X POST https://api.render.com/v1/services \
     "repo": "https://github.com/username/repo",
     "autoDeploy": "yes",
     "branch": "main",
-    "rootDir": "./",
-    "runtime": "node",
-    "buildCommand": "npm install",
-    "startCommand": "npm start",
+    "serviceDetails": {
+      "runtime": "node",
+      "envSpecificDetails": {
+        "buildCommand": "npm install",
+        "startCommand": "npm start"
+      }
+    },
     "envVars": [
       {
         "key": "NODE_ENV",
@@ -192,21 +197,34 @@ curl -H "Authorization: Bearer $RENDER_API_KEY" \
 
 ### Viewing Logs
 
-Stream service logs:
+**IMPORTANT**: The logs endpoint requires `ownerId`, time range, and resource ID(s) as array parameters.
+
+Fetch recent logs for a service:
 
 ```bash
-curl -H "Authorization: Bearer $RENDER_API_KEY" \
-  "https://api.render.com/v1/services/{serviceId}/logs?tail=100"
+# Get logs from the last hour
+END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+START_TIME=$(date -u -d '1 hour ago' +"%Y-%m-%dT%H:%M:%SZ")  # Linux/GNU date
+# For macOS: START_TIME=$(date -u -v-1H +"%Y-%m-%dT%H:%M:%SZ")
+
+curl -G "https://api.render.com/v1/logs" \
+  -H "Authorization: Bearer $RENDER_API_KEY" \
+  --data-urlencode "ownerId=your-owner-id" \
+  --data-urlencode "startTime=$START_TIME" \
+  --data-urlencode "endTime=$END_TIME" \
+  --data-urlencode "resource=srv-xxxxx" \
+  --data-urlencode "direction=backward"
 ```
 
-Filter logs by type:
+**Alternative (simpler) approach**: Use the Render Dashboard for logs, as the API endpoint is complex:
+- **Service Logs**: `https://dashboard.render.com/web/{serviceId}`
+- Click on any deployment to view build and runtime logs
 
-```bash
-curl -H "Authorization: Bearer $RENDER_API_KEY" \
-  "https://api.render.com/v1/services/{serviceId}/logs?type=build"
-```
+**Note**: Multiple resources can be queried by adding multiple `resource` parameters.
 
 ### Creating a Postgres Database
+
+**IMPORTANT**: The `version` parameter is required when creating a Postgres database.
 
 ```bash
 curl -X POST https://api.render.com/v1/postgres \
@@ -216,11 +234,14 @@ curl -X POST https://api.render.com/v1/postgres \
     "name": "my-database",
     "ownerId": "your-owner-id",
     "plan": "starter",
+    "version": "16",
     "region": "oregon",
     "databaseName": "mydb",
     "databaseUser": "myuser"
   }'
 ```
+
+**Available Postgres versions**: 12, 13, 14, 15, 16 (check Render docs for latest)
 
 Get connection info:
 
@@ -351,19 +372,88 @@ This downloads the latest OpenAPI schema and regenerates the search index. Run t
 - Solution: Retry with exponential backoff
 - Check status: https://status.render.com
 
-### Quick Fixes
+### Deployment Troubleshooting
 
-**Build Failing**:
-1. Check build logs: `curl ... /v1/services/{serviceId}/logs?type=build`
-2. Verify build command is correct
-3. Check environment variables are set
-4. Try clearing build cache in next deployment
+#### Build Failing
 
-**Service Not Starting**:
-1. Check runtime logs: `curl ... /v1/services/{serviceId}/logs?type=deploy`
-2. Verify start command is correct
-3. Check health check configuration
-4. Ensure port binding is correct (use `PORT` environment variable)
+**Cannot access logs via API?**
+The logs API endpoint is complex and requires time ranges. **Recommended approach**:
+- Go to: `https://dashboard.render.com/web/{serviceId}`
+- Click on the failed deployment
+- View full build logs in the dashboard
+
+**Common Build Failures:**
+
+1. **"missing environment variable value" error when creating service**
+   - Cause: Environment variables with `generateValue` or `fromDatabase` cannot be used in POST requests
+   - Solution: Either provide actual values or add env vars after service creation using PUT endpoint
+
+2. **"must include serviceDetails when creating a non-static service"**
+   - Cause: Missing required `serviceDetails` object in service creation
+   - Solution: Include `serviceDetails` with `runtime` and `envSpecificDetails`:
+     ```json
+     {
+       "serviceDetails": {
+         "runtime": "node",
+         "envSpecificDetails": {
+           "buildCommand": "npm install",
+           "startCommand": "npm start"
+         }
+       }
+     }
+     ```
+
+3. **"version is required" when creating Postgres**
+   - Cause: Missing required `version` parameter
+   - Solution: Add `"version": "16"` to Postgres creation request
+
+4. **Build fails with "command not found: pnpm/yarn"**
+   - Cause: Package manager not globally available
+   - Solution: Install globally in build command:
+     ```bash
+     "buildCommand": "npm install -g pnpm && pnpm install && pnpm build"
+     ```
+
+5. **Database migrations fail during build**
+   - Cause: Database not accessible during build phase, or connection string not available yet
+   - Solution: Move migrations to start command instead:
+     ```json
+     {
+       "buildCommand": "pnpm install && pnpm build",
+       "startCommand": "pnpm db:migrate && pnpm start"
+     }
+     ```
+
+#### Service Not Starting
+
+1. **Check deployment status**:
+   ```bash
+   curl "https://api.render.com/v1/services/{serviceId}/deploys/{deployId}" \
+     -H "Authorization: Bearer $RENDER_API_KEY"
+   ```
+
+2. **Common issues**:
+   - Port binding: Ensure your app listens on `process.env.PORT` (Render injects this)
+   - Missing environment variables: Verify all required env vars are set
+   - Health check fails: Check health check path configuration or disable it temporarily
+   - Start command incorrect: Verify the command matches your package.json scripts
+
+3. **View logs** (use dashboard as API is complex):
+   - `https://dashboard.render.com/web/{serviceId}`
+
+#### Database Connection Issues
+
+1. **Service can't connect to database**:
+   - Verify database is in "available" status (not "creating")
+   - Check `POSTGRES_URL` environment variable is set correctly
+   - Ensure service and database are in same region (or use external connection string)
+   - For internal connections, use format: `postgresql://user:pass@{db-id}/{dbname}`
+
+2. **Get database connection info**:
+   ```bash
+   curl "https://api.render.com/v1/postgres/{postgresId}/connection-info" \
+     -H "Authorization: Bearer $RENDER_API_KEY"
+   ```
 
 **For comprehensive troubleshooting**, see `references/OPERATIONS-GUIDE.md`.
 
