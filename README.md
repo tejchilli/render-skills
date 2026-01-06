@@ -1,94 +1,60 @@
-# Render Skills for Claude Code
+# Render Skills Marketplace
 
-A comprehensive skill for managing Render cloud infrastructure through Claude Code. This plugin provides complete guidance and automation for working with the Render.com hosting platform.
-
-## Features
-
-- **Service Management**: Create and configure web services, background workers, cron jobs, and static sites
-- **Deployment Control**: Trigger deployments, monitor status, view logs, and manage rollbacks
-- **Datastore Operations**: Set up and manage PostgreSQL, Redis, and Key-Value stores
-- **Environment Configuration**: Manage environment variables and secrets
-- **Infrastructure as Code**: Work with Render blueprints for declarative infrastructure
-- **Monitoring & Troubleshooting**: Access logs, metrics, and diagnostic tools
-- **API Discovery**: Built-in search tool for finding relevant API endpoints
+A Claude Code plugin marketplace providing comprehensive tools for managing Render cloud infrastructure.
 
 ## Installation
 
-### Via Plugin Marketplace
+### From GitHub
 
-Add this marketplace to your Claude Code configuration:
-
-```bash
-claude plugin add https://raw.githubusercontent.com/tejchilli/render-skills/main/.claude-plugin/marketplace.json
-```
-
-Then install the skill:
+Once published, users can install from your GitHub repository:
 
 ```bash
-claude plugin install render
+# Add the marketplace
+/plugin marketplace add <your-github-username>/render-skills
+
+# Install the render plugin
+/plugin install render@render-skills-marketplace
 ```
 
-### Manual Installation
-
-Clone and symlink:
+### Local Installation (for testing)
 
 ```bash
-git clone https://github.com/tejchilli/render-skills.git
-ln -s $(pwd)/render-skills ~/.config/claude-code/skills/render
+# Add the marketplace locally
+/plugin marketplace add /Users/tej/Desktop/Code/render-skills
+
+# Install the plugin
+/plugin install render@render-skills-marketplace
 ```
 
-## Usage
+## Plugins
 
-Once installed, invoke the skill in Claude Code using `/render`:
+### render
 
-```
-/render help me create a web service with Node.js
-/render show me how to deploy my application
-/render configure a postgres database
-/render check the logs for my service
-```
+Complete toolkit for managing Render cloud infrastructure via API:
 
-## Quick Start
+- Create and configure services (web, workers, cron jobs)
+- Manage deployments and environment variables
+- Configure datastores (Postgres, Redis, Key-Value stores)
+- Work with infrastructure-as-code blueprints
+- Monitor logs and metrics
+- Troubleshoot common issues
 
-1. **Set your Render API key**:
+See the [plugin README](./plugins/render/README.md) for detailed usage instructions.
+
+## Publishing
+
+To publish this marketplace:
+
+1. Push to GitHub:
    ```bash
-   export RENDER_API_KEY="your_api_key_here"
-   ```
-   Get your API key from: https://dashboard.render.com/settings/api-keys
-
-2. **Use the skill** in Claude Code to manage your infrastructure
-
-3. **Search the API** using the built-in search tool:
-   ```bash
-   python3 scripts/search-api.py "postgres"
+   git push origin main
    ```
 
-## Requirements
-
-- Python 3.8+
-- curl
-- jq
-- Internet access for API calls
-- Render API key
-
-## Documentation
-
-- **SKILL.md**: Main skill documentation with examples
-- **references/RESOURCES.md**: Detailed service types and datastore configurations
-- **references/OPERATIONS-GUIDE.md**: Advanced operations and troubleshooting
-- **references/BLUEPRINTS.md**: Infrastructure-as-code guide
-- **references/EXAMPLES.md**: End-to-end workflow examples
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
+2. Users can then add your marketplace:
+   ```bash
+   /plugin marketplace add your-username/render-skills
+   ```
 
 ## License
 
 Apache-2.0
-
-## Support
-
-- Render Documentation: https://render.com/docs
-- Render API Reference: https://api-docs.render.com
-- Render Status: https://status.render.com

@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "render",
-      "source": "."
+      "source": "./plugins/render"
     }
   ]
 }
