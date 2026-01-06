@@ -1,0 +1,33 @@
+{
+  "name": "render",
+  "version": "1.0.0",
+  "description": "Complete toolkit for managing Render cloud infrastructure via API - create and configure services (web, workers, cron jobs), manage deployments, configure environments, handle datastores (Postgres, Redis, KV), work with blueprints for infrastructure-as-code, monitor logs and metrics, and troubleshoot common issues. Use this when working with Render.com hosting platform.",
+  "author": {
+    "name": "Tej"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "render",
+    "cloud",
+    "deployment",
+    "api",
+    "infrastructure",
+    "devops",
+    "hosting",
+    "postgres",
+    "redis",
+    "web-services"
+  ],
+  "category": "cloud",
+  "tags": [
+    "infrastructure-as-code",
+    "deployment",
+    "databases"
+  ],
+  "skills": [
+    {
+      "name": "render",
+      "path": "SKILL.md"
+    }
+  ]
+}
