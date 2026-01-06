@@ -17,11 +17,5 @@
     "postgres",
     "redis",
     "web-services"
-  ],
-  "skills": [
-    {
-      "name": "render",
-      "path": "SKILL.md"
-    }
   ]
 }
