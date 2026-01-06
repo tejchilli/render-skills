@@ -10,7 +10,7 @@ Once published, users can install from your GitHub repository:
 
 ```bash
 # Add the marketplace
-/plugin marketplace add <your-github-username>/render-skills
+/plugin marketplace add tejchilli/render-skills
 
 # Install the render plugin
 /plugin install render@render-skills-marketplace
@@ -52,7 +52,7 @@ To publish this marketplace:
 
 2. Users can then add your marketplace:
    ```bash
-   /plugin marketplace add your-username/render-skills
+   /plugin marketplace add tejchilli/render-skills
    ```
 
 ## License
